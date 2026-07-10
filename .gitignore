@@ -1,0 +1,5 @@
+# 환경변수 파일 - 절대 GitHub에 올리지 않음
+.env
+
+# Node 모듈
+node_modules/

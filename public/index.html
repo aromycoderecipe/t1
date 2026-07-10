@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo 앱</title>
+  <style>
+    /* ─────────────────────────────────────────
+       다크 모드 색상 팔레트
+    ───────────────────────────────────────── */
+    :root {
+      --bg: #2e2e31;
+      --surface: #14161f;
+      --surface-2: #1b1e29;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e6ef;
+      --text-dim: #8b8fa3;
+      --accent: #8b5cf6;
+      --accent-2: #22d3ee;
+      --warn: #fbbf24;
+      --danger: #f43f5e;
+    }
+
+    /* ─────────────────────────────────────────
+       기본 초기화
+       - 모든 요소의 기본 여백/패딩 제거
+       - box-sizing: border-box → 패딩이 너비에 포함되도록 설정
+    ───────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─────────────────────────────────────────
+       전체 페이지 레이아웃
+       - 화면 중앙에 카드를 배치
+       - 짙은 회색 배경
+    ───────────────────────────────────────── */
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ─────────────────────────────────────────
+       카드 컨테이너
+       - 어두운 카드 + 뚜렷한 포인트 컬러 라인 테두리
+    ───────────────────────────────────────── */
+    .container {
+      background: var(--surface);
+      border: 1px solid rgba(139,92,246,0.4);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+
+    /* ─────────────────────────────────────────
+       상단 헤더 영역
+       - 짙은 보라 그라데이션 + 네온 포인트 텍스트
+    ───────────────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, #1c1533 0%, #251a3f 100%);
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      padding: 28px 24px 20px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #cbb8ff;
+      text-shadow: 0 0 18px rgba(139,92,246,0.55);
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ─────────────────────────────────────────
+       입력 영역
+       - 텍스트 입력창 + 추가 버튼
+    ───────────────────────────────────────── */
+    .input-area {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-area input::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* 입력창 포커스 시 네온 보라 글로우 */
+    .input-area input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
+    }
+
+    .input-area button {
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .input-area button:hover {
+      background: #7c4ce8;
+      box-shadow: 0 0 16px rgba(139,92,246,0.55);
+    }
+
+    /* ─────────────────────────────────────────
+       할 일 목록 영역
+       - 각 항목들이 나열되는 공간
+       - min-height: 비어있어도 최소 높이 유지
+    ───────────────────────────────────────── */
+    .todo-list {
+      padding: 12px 24px 24px;
+      min-height: 200px;
+    }
+
+    /* 항목이 없을 때 표시되는 안내 문구 */
+    .empty {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 40px 0;
+      font-size: 14px;
+    }
+
+    /* ─────────────────────────────────────────
+       개별 할 일 항목
+       - 번호 + 내용 + 버튼들을 가로로 배치
+    ───────────────────────────────────────── */
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* 마지막 항목은 하단 구분선 제거 */
+    .todo-item:last-child {
+      border-bottom: none;
+    }
+
+    /* 항목 번호 (id) */
+    .todo-id {
+      font-size: 11px;
+      color: var(--text-dim);
+      min-width: 20px;
+      font-weight: 600;
+    }
+
+    /* 할 일 텍스트 내용 */
+    .todo-text {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+      transition: all 0.2s;
+    }
+
+    /* 완료된 항목은 취소선 + 회색 처리 */
+    .todo-text.done {
+      text-decoration: line-through;
+      color: var(--text-dim);
+    }
+
+    /* ─────────────────────────────────────────
+       인라인 편집 입력창
+       - "변경" 버튼 클릭 시 텍스트 자리를 대체하는 입력창
+    ───────────────────────────────────────── */
+    .todo-edit-input {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+
+    /* ─────────────────────────────────────────
+       버튼 스타일
+       - 완료: 네온 시안 계열
+       - 변경: 네온 앰버 계열
+       - 삭제: 네온 로즈 계열
+       - 저장: 네온 시안 계열 / 취소: 무채색
+    ───────────────────────────────────────── */
+
+    /* 완료 버튼 */
+    .btn-done {
+      padding: 5px 12px;
+      background: rgba(34,211,238,0.12);
+      color: var(--accent-2);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-done:hover {
+      background: rgba(34,211,238,0.22);
+    }
+
+    /* 이미 완료된 항목은 버튼 비활성화 */
+    .btn-done:disabled {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-dim);
+      cursor: default;
+    }
+
+    /* 변경 버튼 */
+    .btn-edit {
+      padding: 5px 10px;
+      background: rgba(251,191,36,0.12);
+      color: var(--warn);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-edit:hover {
+      background: rgba(251,191,36,0.22);
+    }
+
+    /* 삭제 버튼 */
+    .btn-delete {
+      padding: 5px 10px;
+      background: rgba(244,63,94,0.12);
+      color: var(--danger);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-delete:hover {
+      background: rgba(244,63,94,0.22);
+    }
+
+    /* 저장 버튼 (인라인 편집) */
+    .btn-save {
+      padding: 5px 10px;
+      background: rgba(34,211,238,0.12);
+      color: var(--accent-2);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-save:hover {
+      background: rgba(34,211,238,0.22);
+    }
+
+    /* 취소 버튼 (인라인 편집) */
+    .btn-cancel {
+      padding: 5px 10px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text-dim);
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    /* ─────────────────────────────────────────
+       하단 상태 바
+       - 전체 항목 수 / 완료 항목 수 표시
+    ───────────────────────────────────────── */
+    .status-bar {
+      padding: 10px 24px;
+      background: var(--surface-2);
+      font-size: 12px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 상단 헤더 -->
+    <div class="header">
+      <h1>📋 Todo 앱</h1>
+      <p>Claude Code 실습용 — 텔레그램 연동 추가 예정</p>
+    </div>
+
+    <!-- 할 일 입력 영역 -->
+    <div class="input-area">
+      <input type="text" id="todoInput" placeholder="할 일을 입력하세요..." />
+      <button onclick="addTodo()">추가</button>
+    </div>
+
+    <!-- 할 일 목록 출력 영역 (JS에서 동적으로 채워짐) -->
+    <div class="todo-list" id="todoList">
+      <div class="empty">할 일을 추가해보세요 ✍️</div>
+    </div>
+
+    <!-- 하단 상태 바 (전체/완료 개수 표시) -->
+    <div class="status-bar" id="statusBar">항목 없음</div>
+
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────
+    // 상태
+    // - currentTodos : 마지막으로 불러온 목록 (편집 중 재렌더링에 사용)
+    // - editingId / editingText : 인라인 편집 중인 항목과 입력값
+    // ─────────────────────────────────────────
+    let currentTodos = [];
+    let editingId = null;
+    let editingText = '';
+
+    // ─────────────────────────────────────────
+    // loadTodos()
+    // 기능 : 서버에서 전체 할 일 목록을 가져와 화면에 표시
+    // 호출 : 페이지 최초 로드 시 + 항목 추가/완료/삭제 후 자동 호출 + 주기적 자동 새로고침
+    // ─────────────────────────────────────────
+    async function loadTodos() {
+      const res = await fetch('/api/todos');
+      currentTodos = await res.json();
+      renderTodos(currentTodos);
+    }
+
+    // ─────────────────────────────────────────
+    // renderTodos(todos)
+    // 기능 : 받아온 목록 데이터를 HTML로 변환해서 화면에 그림
+    // - 목록이 비어있으면 안내 문구 표시
+    // - 완료된 항목은 취소선 처리 + 완료/변경 버튼 비활성화
+    // - editingId와 일치하는 항목은 입력창(인라인 편집) 형태로 표시
+    // ─────────────────────────────────────────
+    function renderTodos(todos) {
+      const list = document.getElementById('todoList');
+      const status = document.getElementById('statusBar');
+
+      // 목록이 비어있을 때
+      if (todos.length === 0) {
+        list.innerHTML = '<div class="empty">할 일을 추가해보세요 ✍️</div>';
+        status.textContent = '항목 없음';
+        return;
+      }
+
+      // 완료된 항목 수 계산 후 상태 바 업데이트
+      const doneCount = todos.filter(t => t.done).length;
+      status.textContent = `전체 ${todos.length}개 · 완료 ${doneCount}개`;
+
+      // 각 항목을 HTML 카드로 변환
+      list.innerHTML = todos.map(todo => {
+        // 편집 중인 항목은 인라인 입력창으로 표시
+        if (todo.id === editingId) {
+          return `
+            <div class="todo-item">
+              <span class="todo-id">${todo.id}</span>
+              <input
+                class="todo-edit-input"
+                id="edit-input-${todo.id}"
+                type="text"
+                oninput="editingText = this.value"
+                onkeydown="handleEditKeydown(event, ${todo.id})"
+              />
+              <button class="btn-save" onclick="saveEdit(${todo.id})">저장</button>
+              <button class="btn-cancel" onclick="cancelEdit()">취소</button>
+            </div>
+          `;
+        }
+
+        return `
+        <div class="todo-item">
+          <!-- 항목 번호 (텔레그램에서 "완료 1", "삭제 2" 등에 사용) -->
+          <span class="todo-id">${todo.id}</span>
+
+          <!-- 할 일 내용 (완료 시 취소선 클래스 적용) -->
+          <span class="todo-text ${todo.done ? 'done' : ''}">${todo.text}</span>
+
+          <!-- 완료 버튼: 이미 완료된 항목은 비활성화 -->
+          <button class="btn-done" onclick="doneTodo(${todo.id})" ${todo.done ? 'disabled' : ''}>
+            ${todo.done ? '✅ 완료' : '완료'}
+          </button>
+
+          <!-- 변경 버튼: 완료된 항목은 변경 불가 -->
+          <button class="btn-edit" onclick="startEdit(${todo.id})" ${todo.done ? 'disabled' : ''}>변경</button>
+
+          <!-- 삭제 버튼: 완료 여부 상관없이 항상 삭제 가능 -->
+          <button class="btn-delete" onclick="deleteTodo(${todo.id})">삭제</button>
+        </div>
+      `;
+      }).join('');
+
+      // 편집 중인 입력창에 현재 값 채우고 포커스
+      if (editingId !== null) {
+        const input = document.getElementById(`edit-input-${editingId}`);
+        if (input) {
+          input.value = editingText;
+          input.focus();
+          input.select();
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────
+    // addTodo()
+    // 기능 : 입력창의 텍스트를 서버에 전송해서 새 항목 추가
+    // 호출 : 추가 버튼 클릭 or Enter 키 입력
+    // ─────────────────────────────────────────
+    async function addTodo() {
+      const input = document.getElementById('todoInput');
+      const text = input.value.trim(); // 앞뒤 공백 제거
+      if (!text) return;              // 빈 값이면 추가 안 함
+
+      await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      input.value = ''; // 추가 후 입력창 초기화
+      loadTodos();      // 목록 새로고침
+    }
+
+    // ─────────────────────────────────────────
+    // startEdit(id)
+    // 기능 : 해당 항목을 인라인 입력창 모드로 전환
+    // ─────────────────────────────────────────
+    function startEdit(id) {
+      const todo = currentTodos.find(t => t.id === id);
+      if (!todo) return;
+
+      editingId = id;
+      editingText = todo.text;
+      renderTodos(currentTodos);
+    }
+
+    // ─────────────────────────────────────────
+    // cancelEdit()
+    // 기능 : 인라인 편집을 취소하고 원래 목록 화면으로 복귀
+    // ─────────────────────────────────────────
+    function cancelEdit() {
+      editingId = null;
+      editingText = '';
+      renderTodos(currentTodos);
+    }
+
+    // ─────────────────────────────────────────
+    // handleEditKeydown(e, id)
+    // 기능 : 편집 입력창에서 Enter → 저장, Esc → 취소
+    // ─────────────────────────────────────────
+    function handleEditKeydown(e, id) {
+      if (e.key === 'Enter') saveEdit(id);
+      if (e.key === 'Escape') cancelEdit();
+    }
+
+    // ─────────────────────────────────────────
+    // saveEdit(id)
+    // 기능 : 인라인 입력창의 내용으로 서버에 변경 요청
+    // ─────────────────────────────────────────
+    async function saveEdit(id) {
+      const newText = editingText.trim();
+      if (!newText) return; // 빈 값이면 저장하지 않음
+
+      await fetch(`/api/todos/${id}/text`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText })
+      });
+
+      editingId = null;
+      editingText = '';
+      loadTodos(); // 목록 새로고침
+    }
+
+    // ─────────────────────────────────────────
+    // doneTodo(id)
+    // 기능 : 특정 항목을 완료 처리
+    // 주의 : 완료 후 되돌릴 수 없음 (실습용 단순 구조)
+    // ─────────────────────────────────────────
+    async function doneTodo(id) {
+      await fetch(`/api/todos/${id}/done`, { method: 'PATCH' });
+      loadTodos(); // 목록 새로고침
+    }
+
+    // ─────────────────────────────────────────
+    // deleteTodo(id)
+    // 기능 : 특정 항목을 목록에서 완전히 삭제
+    // ─────────────────────────────────────────
+    async function deleteTodo(id) {
+      await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+      loadTodos(); // 목록 새로고침
+    }
+
+    // ─────────────────────────────────────────
+    // Enter 키 이벤트
+    // - 입력창에서 Enter 키를 누르면 추가 버튼과 동일하게 동작
+    // ─────────────────────────────────────────
+    document.getElementById('todoInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+
+    // ─────────────────────────────────────────
+    // 초기 실행
+    // - 페이지가 로드되면 서버에서 목록을 가져와 화면에 표시
+    // ─────────────────────────────────────────
+    loadTodos();
+
+    // ─────────────────────────────────────────
+    // 자동 새로고침
+    // - 텔레그램 명령 등 다른 경로로 변경된 내용도 새로고침 없이 화면에 반영되도록 주기적으로 목록을 다시 불러옴
+    // - 인라인 편집 중일 때는 건너뜀 (입력 중 포커스가 끊기는 것을 방지)
+    // ─────────────────────────────────────────
+    setInterval(() => {
+      if (editingId === null) loadTodos();
+    }, 2000);
+  </script>
+</body>
+</html>
